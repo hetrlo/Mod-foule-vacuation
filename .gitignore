@@ -158,3 +158,318 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+##############################################################################################
+
+import matplotlib.pyplot as plt
+import numpy as np
+from math import *
+import random as rd
+from heapdict import *
+
+# cases de la matrice : si obstacle : 42 ; sinon densité entre 0 et 1
+
+# initialisation
+Murs = 2
+ligne =10
+colonne=10
+E = np.zeros((ligne,colonne))
+for i in range(len(E)):
+    for j in range(len(E[0])):
+        E[i][j] += 0.4
+'''E[6][9]=Murs
+E[2][2]=Murs'''
+'''for i in range(4) :
+    E[4-i][3+i]=Murs
+    E[5+i][3+i]=Murs'''
+sortie = [9,9]
+#print(E)
+
+
+# Fonction voisins
+def voisins(E,i,j) : #prend une matrice, une case, retourne ses 8 au + voisins (liste)
+    n,m = len(E),len(E[0])
+    v=[]
+    if i!=0 and E[i-1][j]!=Murs : v.append((i-1,j))
+    if i!=n-1 and E[i+1][j]!=Murs : v.append((i+1,j))
+    if j!=0 and E[i][j-1]!=Murs : v.append((i,j-1))
+    if j!=m-1 and E[i][j+1]!=Murs : v.append((i,j+1))
+    if i != 0:
+        if j!=0:
+            if E[i-1][j-1] != Murs :
+                if not (E[i-1][j]== Murs and E[i][j-1]== Murs) :
+                    v.append((i-1,j-1))
+        if j!=m-1:
+            if E[i-1][j+1]!= Murs :
+                if not (E[i-1][j]== Murs and E[i][j+1]== Murs) :
+                    v.append((i-1,j+1))
+    if i!=n-1:
+        if j!=0:
+            if E[i+1][j-1]!= Murs :
+                if not (E[i+1][j]== Murs and E[i][j-1]== Murs) :
+                    v.append((i+1,j-1))
+        if j!=m-1:
+            if E[i+1][j+1]!= Murs :
+                if not (E[i+1][j]== Murs and E[i][j+1]== Murs) :
+                    v.append((i+1,j+1))
+    return v
+#print(voisins(E,1,2))
+
+def keyMinDico(D):
+    L = []
+    for cle in D.keys():
+        L.append(cle)
+    min = L[0]
+    for cle in D.keys():
+        if D[cle]<D[min] : min = cle
+    return min
+
+# Fonction TabledesDistances
+def distance(sortie,i,j) :      # sortie est la liste[is,js] des coordonnées de la sortie
+    return abs(sortie[0]-i)+abs(sortie[1]-j)
+
+def dist1(a,b): # a et b des couples, distance norme 1
+    return abs(b[0]-a[0])+abs(b[1]-a[1])
+
+def dist2(a,b): # distance norme euclidienne
+    return sqrt((b[0]-a[0])**2 + (b[1]-a[1])**2)
+
+def distaberrante(a,b): # distance stupidee !
+    return sqrt((b[0]-a[0])**2)
+
+
+# Fonction dijkstra avec heapdict
+def chemin(G,i,j,k,l):
+    noir = {}
+    gris = heapdict()
+    gris[(i,j)]=0
+    pere = {}
+    chemn = [(k,l)]
+    while (k,l) not in noir.keys():
+        traité = gris.peekitem()[0]
+        noir[traité]=gris[traité]
+        del gris[traité]
+        for v in voisins(G,traité[0],traité[1]):
+            if v in noir.keys(): None
+            elif v not in gris.keys():
+                gris[v] = dist2(v,traité)+noir[traité]
+                pere[v]=traité
+            else :
+                if noir[traité] + dist2(v,traité) < gris[v]:
+                    gris[v] = noir[traité] + dist2(v,traité)
+                    pere[v]=traité
+    while (i,j) not in chemn :
+        chemn.append((pere[chemn[-1]]))
+    return chemn[::-1]
+#print(chemin(E,2,3,5,9))
+
+def chemin2(G,i,j,k,l): # simple dico
+    noir = {}
+    file = {}
+    file[(i,j)]=0
+    Lc = [(i,j)]
+    pere = {}
+    chemn = [(k, l)]
+    while (k,l) not in noir.keys():
+        traité = Lc[0]
+        noir[traité]=file[traité]
+        del file[traité]
+        Lc = Lc[1:]
+        for v in voisins(G,traité[0],traité[1]):
+            if v in noir.keys(): None
+            elif v not in file.keys():
+                Lc.append(v)
+                file[v] = dist1(v,traité)+noir[traité]
+                pere[v]=traité
+            else :
+                if noir[traité] + dist1(v,traité) < file[v]:
+                    file[v] = noir[traité] + dist1(v,traité)
+                    pere[v]=traité
+    while (i,j) not in chemn :
+        chemn.append((pere[chemn[-1]]))
+    return chemn[::-1]
+
+
+def MatDij(G,sortie): # matrice donnant la case sur laquelle aller depuis chaque position
+    n,m,k,l = len(E),len(E[0]),sortie[0],sortie[1]
+    M = [[0 for e in range(m)] for f in range(n)]
+    noir = {}
+    gris = heapdict()
+    gris[(k,l)]=0
+    M[k][l]=0
+    pere = {}
+
+    while len(gris) > 0:
+        traité = gris.peekitem()[0]
+        noir[traité]=gris[traité]
+        del gris[traité]
+        for v in voisins(G,traité[0],traité[1]):
+            if v in noir.keys(): None
+            elif v not in gris.keys():
+                gris[v] = dist2(v,traité)+noir[traité]
+                M[v[0]][v[1]]=traité
+            else :
+                if noir[traité] + dist2(v,traité) < gris[v]:
+                    gris[v] = noir[traité] + dist2(v,traité)
+                    M[v[0]][v[1]]=traité
+    return M
+
+MatSuiv = MatDij(E,sortie)
+#print(MatSuiv[2][3])
+
+
+def TrideSource(E,L):
+    if len(L) <= 1 : return L
+    L1,L2 = [],[]
+    for k in range(1,len(L)):
+        if E[L[k][0]][L[k][1]] <= E[L[0][0]][L[0][1]] : L1.append(L[k])
+        else : L2.append(L[k])
+    return TrideSource(E,L1)+[L[0]]+TrideSource(E,L2)
+
+
+#prend en argument le réseau et i j les coord d'une case du réseau et renvoie la liste de toutes les cases qui veulent aller sur celle de coord i j
+def case_source(E,i,j) :
+    l,n,m=[],len(E),len(E[0])
+    for a in range(i-1,i+2) :
+        for b in range(j-1,j+2) :
+            if (a<n) and (a>=0) and (b<m) and (b>=0) :
+                if MatSuiv[a][b]==(i,j) : l.append((a,b))
+    return l
+#print(case_source(E,1,2))
+
+def TableDist(sortie,E) :
+    m,n=len(E[0]),len(E)
+    D = [[] for i in range(n+m-1)]
+    for i in range (n) :
+        for j in range (m) :
+            if E[i][j] != Murs :
+                D[distance(sortie,i,j)].append((i,j))
+    return D
+TabDist = TableDist(sortie,E)
+#print(TabDist)
+
+def interVoisinMiniDist(E,i,j) :
+    candidats=[]
+    n,m=len(E),len(E[0])
+    candidats += voisins(E,i,j)
+    # on regarde maintenant si la distance est bien inf ou égal à celle de la case dont les excités partent
+    inter=[]
+    for c in candidats :
+        if distance(sortie,c[0],c[1])<=distance(sortie,i,j)+1 : inter.append(c)
+    return inter
+
+def somme(liste) : # somme termes liste
+    s=0
+    for k in range(len(liste)) :
+        s+=liste[k]
+    return s
+
+def distribution_case(E,i,j) :
+    # On partage équitablement
+    source=case_source(E,i,j) # y'a pas de murs dans source ; cases qui veulent aller sur i,j
+    if len(source) != 0 :
+        p=round((1-E[i][j])/len(source),4) # précision à 0.001
+        for s in source :
+            deplace=min(E[s[0]][s[1]],p)
+            E[s[0]][s[1]] = round(E[s[0]][s[1]] - deplace,4)
+            E[i][j] = round(E[i][j] + deplace,4)
+
+    # Maintenant on remplit les trous, prioritairement avec les cases qui ont le plus de monde dessus
+        if E[i][j]>=1 : pass
+        if E[i][j]<1 :
+            TrideSource(E,source)
+            for k in range(len(source)) :
+                surplus = (min(1-E[i][j],E[source[k][0]][source[k][1]]))
+                E[source[k][0]][source[k][1]]=round(E[source[k][0]][source[k][1]]-surplus,4)
+                E[i][j] = round(E[i][j]+surplus,4)
+
+        test=False
+        for s in source :
+            if  E[s[0]][s[1]] != 0 : test=True
+
+# On répartit les excités dans les cases voisines de distance <= à la sortie selon un découpage équitable avec une incertitude de 10%
+
+# D'abord on créé cette proportion
+        if test :
+            for s in source :
+                excités=(E[s[0]][s[1]])/2
+                proportion=[]
+                sommeprop = 0
+                voisin=interVoisinMiniDist(E,s[0],s[1])
+                moyenne=round(100/len(voisin),4)
+                while len(proportion)<len(voisin)-1 :
+                    k= int(moyenne) + rd.randint(-int(0.2*moyenne),int(0.2*moyenne))
+                    if somme(proportion)<=100 :
+                        proportion.append(k)
+                proportion.append(100-somme(proportion))
+                #print(proportion)
+
+#Enfin on répartit
+
+                for n in range(len(voisin)) :
+                    detrop=min(1-E[voisin[n][0]][voisin[n][1]],excités*proportion[n]/100)
+                    E[s[0]][s[1]]=round(E[s[0]][s[1]]-detrop,4)
+                    E[voisin[n][0]][voisin[n][1]]=round(E[voisin[n][0]][voisin[n][1]]+detrop,4)
+    return source
+#distribution_case(E,1,3)
+
+def pas(E,sortie) :
+    k,l = sortie[0],sortie[1]
+    E[k][l] = 0
+    for k in range(len(TabDist)) :
+        for coord in TabDist[k] :
+            i,j=coord[0],coord[1]
+            distribution_case(E,i,j)
+#pas(E,sortie)
+#print(E)
+
+def testGoodEnough(E):
+    for i in range(len(E)) :
+        for j in  range(len(E[0])) :
+            if E[i][j]!=Murs and E[i][j]!=0 :
+                return False
+    return True
+#print(testGoodenough(E))
+
+nbétapes = 40
+
+def affichage(E,nbétapes):
+    for k in range(nbétapes):
+        figure,barre = plt.subplots()
+        figure = barre.pcolormesh(C, cmap=plt.get_cmap('YlGnBu'),alpha = 1, vmin=0, vmax=Murs)
+        plt.colorbar(figure, ax=barre)
+        if k != 0 : pas(E,sortie)
+        nom = "Etape "+str(k)+".png"
+        plt.show()
+        plt.savefig(nom)
+        plt.close()
+
+#affichage(E,nbétapes)viridis
+
+
+def test() :
+    k = 0
+    figure,barre = plt.subplots()
+    figure = barre.pcolormesh(E, cmap=plt.get_cmap('YlGnBu'),alpha = 1, vmin=0, vmax=Murs)
+    plt.colorbar(figure, ax=barre)
+    nom = "Etape "+str(k)+".png"
+    plt.show()
+    plt.savefig(nom)
+    plt.close()
+    while not testGoodEnough(E) :
+        k += 1
+        pas(E,sortie)
+        figure,barre = plt.subplots()
+        figure = barre.pcolormesh(E, cmap=plt.get_cmap('YlGnBu'),alpha = 1, vmin=0, vmax=Murs)
+        plt.colorbar(figure, ax=barre)
+        nom = "Etape "+str(k)+".png"
+        plt.show()
+        plt.savefig(nom)
+        plt.close()
+test()
+
+def testRap():
+    while not testGoodEnough(E) :
+        pas(E,sortie)
+    print("Fini")
+
+#testRap()
